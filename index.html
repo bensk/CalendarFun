@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Creo Calendar Builder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/timeline.css">
+  <link rel="stylesheet" href="css/modals.css">
+  <link rel="stylesheet" href="css/pdf.css">
+  <!-- Google APIs -->
+  <script src="https://apis.google.com/js/api.js" defer></script>
+  <script src="https://accounts.google.com/gsi/client" defer></script>
+  <!-- PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
+</head>
+<body>
+  <!-- School Year Picker (shown on first load) -->
+  <div id="year-picker-overlay" class="overlay">
+    <div class="modal">
+      <h2>Choose Your School Year</h2>
+      <div class="year-picker-controls">
+        <label for="start-year-select">School Year Starting In:</label>
+        <select id="start-year-select"></select>
+      </div>
+      <p class="year-picker-preview" id="year-preview"></p>
+      <div class="modal-actions">
+        <button id="year-picker-confirm" class="btn btn-primary">Start Building</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal (Spreadsheet ID only) -->
+  <div id="settings-overlay" class="overlay hidden">
+    <div class="modal modal-sm">
+      <h2>Google Sheets Settings</h2>
+      <div class="form-group">
+        <label for="settings-sheet-id">Spreadsheet ID</label>
+        <input type="text" id="settings-sheet-id" placeholder="Paste the ID from your Google Sheet URL">
+        <p class="hint">Find this in the sheet URL: docs.google.com/spreadsheets/d/<strong>SPREADSHEET_ID</strong>/edit</p>
+      </div>
+      <div class="modal-actions">
+        <button id="settings-cancel" class="btn">Cancel</button>
+        <button id="settings-save" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Event Name Modal -->
+  <div id="event-modal-overlay" class="overlay hidden">
+    <div class="modal modal-sm">
+      <h3>New Event</h3>
+      <div class="form-group">
+        <label for="event-name-input">Event Name</label>
+        <input type="text" id="event-name-input" placeholder="e.g. Winter Break" autofocus>
+      </div>
+      <div class="form-group">
+        <label for="event-category-select">Category</label>
+        <select id="event-category-select"></select>
+      </div>
+      <div class="form-group">
+        <label for="event-tag-select">Day Type</label>
+        <select id="event-tag-select">
+          <option value="holiday">Holiday / No School</option>
+          <option value="instructional">Instructional</option>
+          <option value="pd">Professional Development</option>
+          <option value="testing">Testing</option>
+          <option value="early-dismissal">Early Dismissal</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label id="event-date-display"></label>
+      </div>
+      <div class="modal-actions">
+        <button id="event-cancel" class="btn">Cancel</button>
+        <button id="event-confirm" class="btn btn-primary">Add Event</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Event Modal -->
+  <div id="edit-event-overlay" class="overlay hidden">
+    <div class="modal modal-sm">
+      <h3>Edit Event</h3>
+      <div class="form-group">
+        <label for="edit-event-name">Event Name</label>
+        <input type="text" id="edit-event-name">
+      </div>
+      <div class="form-group">
+        <label for="edit-event-category">Category</label>
+        <select id="edit-event-category"></select>
+      </div>
+      <div class="form-group">
+        <label for="edit-event-tag">Day Type</label>
+        <select id="edit-event-tag">
+          <option value="holiday">Holiday / No School</option>
+          <option value="instructional">Instructional</option>
+          <option value="pd">Professional Development</option>
+          <option value="testing">Testing</option>
+          <option value="early-dismissal">Early Dismissal</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label id="edit-event-date-display"></label>
+      </div>
+      <div class="modal-actions">
+        <button id="edit-event-delete" class="btn btn-danger">Delete</button>
+        <button id="edit-event-cancel" class="btn">Cancel</button>
+        <button id="edit-event-save" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category Editor Modal -->
+  <div id="category-modal-overlay" class="overlay hidden">
+    <div class="modal">
+      <h3 id="category-modal-title">Add Category</h3>
+      <div class="form-group">
+        <label for="category-name-input">Name</label>
+        <input type="text" id="category-name-input" placeholder="e.g. Academics">
+      </div>
+      <div class="form-group">
+        <label for="category-color-input">Color</label>
+        <input type="color" id="category-color-input" value="#4A90D9">
+      </div>
+      <div class="modal-actions">
+        <button id="category-cancel" class="btn">Cancel</button>
+        <button id="category-confirm" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Template Picker Modal -->
+  <div id="template-overlay" class="overlay hidden">
+    <div class="modal modal-lg">
+      <h2>Choose a Template</h2>
+      <p class="modal-desc">Start with a pre-built school calendar template, or start from scratch.</p>
+      <div id="template-list" class="template-list"></div>
+      <div class="modal-actions">
+        <button id="template-skip" class="btn">Start from Scratch</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Modal -->
+  <div id="import-overlay" class="overlay hidden">
+    <div class="modal">
+      <h3>Import Calendar</h3>
+      <div class="form-group">
+        <label>Import from CSV file</label>
+        <input type="file" id="import-file" accept=".csv">
+        <p class="hint">CSV format: Event Name, Category, Start Date (YYYY-MM-DD), End Date, Tag</p>
+      </div>
+      <div class="modal-actions">
+        <button id="import-cancel" class="btn">Cancel</button>
+        <button id="import-confirm" class="btn btn-primary">Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App Layout -->
+  <div id="app" class="app hidden">
+    <!-- Toolbar -->
+    <header class="toolbar">
+      <div class="toolbar-left">
+        <h1 class="app-title">Creo Calendar Builder</h1>
+        <span class="year-label" id="toolbar-year-label"></span>
+      </div>
+      <div class="toolbar-center">
+        <button id="btn-undo" class="toolbar-btn" title="Undo (Ctrl+Z)" disabled>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 3L1 6.5l3.5 3.5V7.5h5a3.5 3.5 0 010 7H6v1.5h4.5a5 5 0 000-10h-5V3z"/></svg>
+        </button>
+        <button id="btn-redo" class="toolbar-btn" title="Redo (Ctrl+Shift+Z)" disabled>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M11.5 3l3.5 3.5-3.5 3.5V7.5h-5a3.5 3.5 0 000 7H10v1.5H5.5a5 5 0 010-10h5V3z"/></svg>
+        </button>
+        <div class="toolbar-sep"></div>
+        <button id="btn-template" class="toolbar-btn" title="Load Template">Template</button>
+        <button id="btn-import" class="toolbar-btn" title="Import CSV">Import</button>
+        <div class="toolbar-sep"></div>
+        <button id="btn-sign-in" class="toolbar-btn" title="Sign in with Google">Sign in with Google</button>
+        <button id="btn-save-sheet" class="toolbar-btn" title="Save to Google Sheets" disabled>Save to Sheets</button>
+        <button id="btn-load-sheet" class="toolbar-btn" title="Load from Google Sheets" disabled>Load from Sheets</button>
+        <div class="toolbar-sep"></div>
+        <div class="dropdown">
+          <button id="btn-export-pdf" class="toolbar-btn">Export PDF</button>
+          <div class="dropdown-menu" id="pdf-dropdown">
+            <button id="btn-pdf-wall">Wall Calendar</button>
+            <button id="btn-pdf-table">Spreadsheet Table</button>
+          </div>
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <button id="btn-settings" class="toolbar-btn" title="Settings">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 4.754a3.246 3.246 0 100 6.492 3.246 3.246 0 000-6.492zM5.754 8a2.246 2.246 0 114.492 0 2.246 2.246 0 01-4.492 0z"/><path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 01-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 01-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 01.52 1.255l-.16.292c-.892 1.64.902 3.434 2.541 2.54l.292-.159a.873.873 0 011.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 011.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 01.52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 01-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 01-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 002.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 001.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 00-1.115 2.693l.16.291c.415.764-.421 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 00-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 00-2.692-1.115l-.292.16c-.764.415-1.6-.421-1.184-1.185l.159-.291A1.873 1.873 0 001.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 003.06 4.377l-.16-.292c-.415-.764.421-1.6 1.185-1.184l.292.159a1.873 1.873 0 002.692-1.116l.094-.318z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-section">
+          <h3>Categories</h3>
+          <div id="category-list"></div>
+          <button id="btn-add-category" class="btn btn-sm">+ Add Category</button>
+        </div>
+        <div class="sidebar-section">
+          <h3>Day Counts</h3>
+          <div id="day-counts"></div>
+        </div>
+      </aside>
+
+      <!-- Timeline -->
+      <div class="timeline-wrapper" id="timeline-wrapper">
+        <div class="timeline-container" id="timeline-container"></div>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <footer class="status-bar">
+      <div id="status-counts"></div>
+      <div id="status-info"></div>
+    </footer>
+  </div>
+
+  <!-- Scripts (order matters) -->
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/model.js"></script>
+  <script src="js/undo.js"></script>
+  <script src="js/daycounter.js"></script>
+  <script src="js/timeline.js"></script>
+  <script src="js/interactions.js"></script>
+  <script src="js/categories.js"></script>
+  <script src="js/templates.js"></script>
+  <script src="js/import.js"></script>
+  <script src="js/sheets.js"></script>
+  <script src="js/pdf.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

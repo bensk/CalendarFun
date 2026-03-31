@@ -1,0 +1,21 @@
+/* ============================================================
+   pdf.css — Print-specific styles (not used at runtime,
+   reserved for any future print stylesheet needs)
+   ============================================================ */
+
+@media print {
+  .toolbar,
+  .sidebar,
+  .status-bar,
+  .overlay {
+    display: none !important;
+  }
+
+  .main-content {
+    display: block;
+  }
+
+  .timeline-wrapper {
+    overflow: visible;
+  }
+}

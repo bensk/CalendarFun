@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "Bash(brew list:*)",
+      "Bash(xargs kill:*)",
+      "Bash(brew install:*)"
+    ]
+  }
+}
