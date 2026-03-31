@@ -7,6 +7,7 @@ const Sheets = (() => {
   let gapiInited = false;
   let gisInited = false;
   let accessToken = null;
+  let pendingAction = null; // 'save' or 'load' — resumes after settings modal
 
   function getSheetId() {
     return localStorage.getItem('gcal_sheet_id') || '';
@@ -45,7 +46,9 @@ const Sheets = (() => {
             return;
           }
           accessToken = resp.access_token;
+          gapi.client.setToken({ access_token: accessToken });
           updateUI(true);
+          console.log('Google sign-in successful');
         },
       });
       gisInited = true;
@@ -87,6 +90,7 @@ const Sheets = (() => {
   async function saveToSheet() {
     const sheetId = getSheetId();
     if (!sheetId) {
+      pendingAction = 'save';
       showSettings();
       return;
     }
@@ -201,6 +205,7 @@ const Sheets = (() => {
   async function loadFromSheet() {
     const sheetId = getSheetId();
     if (!sheetId) {
+      pendingAction = 'load';
       showSettings();
       return;
     }
@@ -491,8 +496,19 @@ const Sheets = (() => {
       saveSheetId(sheetId);
       Model.getState().settings.sheetId = sheetId;
       Utils.hide(overlay);
+      console.log('Sheet ID saved:', sheetId);
+      // If signed in already, auto-trigger save after entering Sheet ID
+      if (accessToken && sheetId && pendingAction) {
+        const action = pendingAction;
+        pendingAction = null;
+        if (action === 'save') saveToSheet();
+        else if (action === 'load') loadFromSheet();
+      }
     });
-    document.getElementById('settings-cancel').addEventListener('click', () => Utils.hide(overlay));
+    document.getElementById('settings-cancel').addEventListener('click', () => {
+      pendingAction = null;
+      Utils.hide(overlay);
+    });
   }
 
   return {
